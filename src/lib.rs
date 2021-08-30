@@ -1,3 +1,4 @@
+#[derive(Debug, Clone)]
 pub struct Task {
     pub id: u64,
     pub queued_at: u32,
@@ -6,6 +7,18 @@ pub struct Task {
 
 pub fn execution_order(tasks: Vec<Task>) -> Vec<u64> {
     todo!()
+}
+
+fn sort_by_queue_order(tasks: Vec<Task>) -> Vec<Task> {
+    let mut sorted = tasks.clone();
+    sorted.sort_unstable_by_key(|task| task.queued_at);
+    sorted
+}
+
+pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
+    let sorted = sort_by_queue_order(tasks);
+    // TODO
+    vec![1,2,3]
 }
 
 #[cfg(test)]
@@ -21,6 +34,20 @@ mod tests {
         ];
 
         assert_eq!(execution_order(tasks), vec![44, 43, 42]);
+    }
+
+
+    #[test]
+    fn queue_order_sorting() {
+        let tasks = vec![
+            Task { id: 42, queued_at: 5, execution_duration: 3 },
+            Task { id: 43, queued_at: 2, execution_duration: 3 },
+            Task { id: 44, queued_at: 0, execution_duration: 2 },
+        ];
+
+        let sorted = sort_by_queue_order(tasks);
+        let sorted_inds: Vec<_> = sorted.iter().map(|task| task.id).collect();
+        assert_eq!(sorted_inds, vec![44, 43, 42]);
     }
 
     #[test]
