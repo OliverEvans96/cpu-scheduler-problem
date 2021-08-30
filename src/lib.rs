@@ -68,7 +68,7 @@ pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
         while remaining_tasks.len() > 0 {
             // Generate new queue
             current_time += current_task.execution_duration;
-            let newly_queued_tasks = tasks.iter().filter(|&task| previous_time < task.queued_at && task.queued_at <= current_time);
+            let newly_queued_tasks = tasks.clone().into_iter().filter(|&task| previous_time < task.queued_at && task.queued_at <= current_time);
             current_queue.extend(newly_queued_tasks);
 
             if let Some(next_task_ind) = get_shortest_task_ind(current_queue) {
