@@ -5,6 +5,7 @@ pub struct Task {
     pub execution_duration: u32,
 }
 
+// Should operate on anything that can be transformed into an iterator over tasks
 pub fn execution_order(tasks: Vec<Task>) -> Vec<u64> {
     // TODO: do something more clever
     naive_order(tasks)
