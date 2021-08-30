@@ -6,7 +6,8 @@ pub struct Task {
 }
 
 pub fn execution_order(tasks: Vec<Task>) -> Vec<u64> {
-    todo!()
+    // TODO: do something more clever
+    naive_order(tasks)
 }
 
 fn sort_by_queue_order(tasks: Vec<Task>) -> Vec<Task> {
@@ -15,10 +16,81 @@ fn sort_by_queue_order(tasks: Vec<Task>) -> Vec<Task> {
     sorted
 }
 
+// TODO: Combine these functions w/ a *_by_key abstraction
+fn get_first_queued_task(tasks: Vec<Task>) -> Option<Task> {
+    if let Some(first_task) = tasks.first() {
+        let mut min_time = first_task.queued_at;
+        let mut min_ind: usize = 0;
+        for (i, task) in tasks.iter().enumerate().skip(1) {
+            if task.queued_at < min_time {
+                min_time = task.queued_at;
+                min_ind = i;
+            }
+        }
+        let first_queued_task = tasks[min_ind];
+        return Some(first_queued_task)
+    }
+    None
+}
+
+fn get_shortest_task_ind(tasks: Vec<Task>) -> Option<usize> {
+    if let Some(first_task) = tasks.first() {
+        let mut min_duration = first_task.execution_duration;
+        let mut min_ind: usize = 0;
+        for (i, task) in tasks.iter().enumerate().skip(1) {
+            if task.execution_duration < min_duration {
+                min_duration = task.execution_duration;
+                min_ind = i;
+            }
+        }
+        return Some(min_ind)
+    }
+    None
+}
+
 pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
-    let sorted = sort_by_queue_order(tasks);
-    // TODO
-    vec![1,2,3]
+    // let mut reverse_sorted_queue = sort_by_queue_order(tasks);
+    // reverse_sorted_queue.reverse();
+
+    // Tasks that have not yet been executed
+    let mut remaining_tasks = tasks.clone();
+
+    // Ids of tasks that have been executed so far
+    let mut executed_ids = Vec::<u64>::new();
+    // Tasks that have been queued so far
+    let mut current_queue = Vec::<Task>::new();
+
+    if let Some(first_task) = get_first_queued_task(tasks) {
+        let mut current_task = first_task;
+        let mut current_time = first_task.queued_at;
+        let mut previous_time: u32;
+        let mut next_task: Task;
+        while remaining_tasks.len() > 0 {
+            // Generate new queue
+            current_time += current_task.execution_duration;
+            let newly_queued_tasks = tasks.iter().filter(|&task| previous_time < task.queued_at && task.queued_at <= current_time);
+            current_queue.extend(newly_queued_tasks);
+
+            if let Some(next_task_ind) = get_shortest_task_ind(current_queue) {
+                // If at least one new task has been queued while the previous one was executing
+                // Get next task
+                next_task = current_queue.remove(next_task_ind);
+            } else {
+                // Otherwise, get the next task that will be queued later
+                // Safe to unwrap here because we know that remaining_tasks.len() > 0
+                next_task = get_first_queued_task(remaining_tasks).unwrap();
+                
+            }
+            // Record that task has been executed
+            executed_ids.push(next_task.id);
+
+            // Prepare for next step
+            current_task = next_task;
+            previous_time = current_time;
+        }
+    }
+
+    executed_ids
 }
 
 #[cfg(test)]
@@ -49,6 +121,8 @@ mod tests {
         let sorted_inds: Vec<_> = sorted.iter().map(|task| task.id).collect();
         assert_eq!(sorted_inds, vec![44, 43, 42]);
     }
+
+    // TODO: if two tasks are available with same duration, take the one queued first
 
     #[test]
     fn two_items_queued_at_once() {
