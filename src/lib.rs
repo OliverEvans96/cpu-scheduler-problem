@@ -17,7 +17,7 @@ fn sort_by_queue_order(tasks: Vec<Task>) -> Vec<Task> {
 }
 
 // TODO: Combine these functions w/ a *_by_key abstraction
-fn get_first_queued_task<'a>(tasks: &'a Vec<Task>) -> Option<&'a Task> {
+fn get_first_queued_task(tasks: Vec<Task>) -> Option<Task> {
     if let Some(first_task) = tasks.first() {
         let mut min_time = first_task.queued_at;
         let mut min_ind: usize = 0;
@@ -28,12 +28,12 @@ fn get_first_queued_task<'a>(tasks: &'a Vec<Task>) -> Option<&'a Task> {
             }
         }
         let first_queued_task = tasks[min_ind];
-        return Some(&first_queued_task)
+        return Some(first_queued_task)
     }
     None
 }
 
-fn get_shortest_task_ind(tasks: Vec<&Task>) -> Option<usize> {
+fn get_shortest_task_ind(tasks: Vec<Task>) -> Option<usize> {
     if let Some(first_task) = tasks.first() {
         let mut min_duration = first_task.execution_duration;
         let mut min_ind: usize = 0;
@@ -58,13 +58,13 @@ pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
     // Ids of tasks that have been executed so far
     let mut executed_ids = Vec::<u64>::new();
     // Tasks that have been queued so far
-    let mut current_queue = Vec::<&Task>::new();
+    let mut current_queue = Vec::<Task>::new();
 
-    if let Some(first_task) = get_first_queued_task(&tasks) {
+    if let Some(first_task) = get_first_queued_task(tasks) {
         let mut current_task = first_task;
         let mut current_time = first_task.queued_at;
-        let mut previous_time = current_time;
-        let mut next_task: &Task;
+        let mut previous_time: u32;
+        let mut next_task: Task;
         while remaining_tasks.len() > 0 {
             // Generate new queue
             current_time += current_task.execution_duration;
@@ -78,7 +78,7 @@ pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
             } else {
                 // Otherwise, get the next task that will be queued later
                 // Safe to unwrap here because we know that remaining_tasks.len() > 0
-                next_task = get_first_queued_task(&remaining_tasks).unwrap();
+                next_task = get_first_queued_task(remaining_tasks).unwrap();
                 
             }
             // Record that task has been executed
