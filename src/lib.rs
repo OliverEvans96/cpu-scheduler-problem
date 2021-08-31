@@ -22,7 +22,12 @@ fn get_shortest_task_ind(tasks: &Vec<&Task>) -> Option<usize> {
     None
 }
 
-struct Scheduler<'a> {
+pub trait Scheduler<'a> {
+    fn new(tasks: &'a Vec<Task>) -> Self;
+    fn execution_order(&mut self) -> Vec<u64>;
+}
+
+pub struct NaiveScheduler<'a> {
     pub current_time: u32,
     // Tasks that have been queued so far
     pub current_queue: Vec<&'a Task>,
@@ -30,24 +35,7 @@ struct Scheduler<'a> {
     pub unqueued_tasks: Vec<&'a Task>,
 }
 
-impl<'a> Scheduler<'a> {
-    /// Time complexity: O(n*log(n))
-    pub fn new(tasks: &'a Vec<Task>) -> Self {
-        // convert from Vec<Task> to Vec<&Task>
-        // TC: O(n)
-        let mut unqueued_tasks: Vec<&Task> = tasks.iter().collect();
-        // Sort unqueued tasks in reverse-chronological queue time for easy popping
-        // Safe to unwrap because two u64s always have a partial ordering.
-        // TC: O(n*log(n)) - https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable_by
-        unqueued_tasks.sort_unstable_by(|&a, &b| b.queued_at.partial_cmp(&a.queued_at).unwrap());
-
-        Self {
-            current_time: 0,
-            current_queue: vec![],
-            unqueued_tasks,
-        }
-    }
-
+impl<'a> NaiveScheduler<'a> {
     /// Time complexity: O(1)
     pub fn unfinished(&self) -> bool {
         // TC: O(1) - https://stackoverflow.com/questions/49775759/what-is-the-runtime-complexity-of-veclen
@@ -105,41 +93,61 @@ impl<'a> Scheduler<'a> {
         // TC: O(n)
         self.current_queue.extend(new_tasks);
     }
-
 }
 
-pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
-    // Do nothing if there are no tasks
-    if tasks.len() == 0 {
-        return vec![];
+impl<'a> Scheduler<'a> for NaiveScheduler<'a> {
+    /// Time complexity: O(n*log(n))
+    fn new(tasks: &'a Vec<Task>) -> Self {
+        // convert from Vec<Task> to Vec<&Task>
+        // TC: O(n)
+        let mut unqueued_tasks: Vec<&Task> = tasks.iter().collect();
+        // Sort unqueued tasks in reverse-chronological queue time for easy popping
+        // Safe to unwrap because two u64s always have a partial ordering.
+        // TC: O(n*log(n)) - https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable_by
+        unqueued_tasks.sort_unstable_by(|&a, &b| b.queued_at.partial_cmp(&a.queued_at).unwrap());
+
+        Self {
+            current_time: 0,
+            current_queue: vec![],
+            unqueued_tasks,
+        }
     }
 
-    let mut scheduler = Scheduler::new(&tasks);
+    // Time Complexity: O(n^2)
+    fn execution_order(&mut self) -> Vec<u64> {
+        // Ids of tasks that have been executed so far
+        let mut executed_ids = Vec::<u64>::new();
 
-    // Ids of tasks that have been executed so far
-    let mut executed_ids = Vec::<u64>::new();
+        // Loop over each task that gets executed
+        // TC: O(n^2)
+        while self.unfinished() /* TC: O(1) */ {
+            // Choose the next task to execute
+            // TC: O(n)
+            let next_task = self.get_next_task();
+            // Record that the task has been executed
+            // TC: O(1) - https://doc.rust-lang.org/std/collections/index.html#sequences
+            executed_ids.push(next_task.id);
+            // Queue any tasks submitted during execution
+            // TC: O(n)
+            self.update_queue();
+        }
 
-    // Loop over each task that gets executed
-    // TC: O(n^2)
-    while scheduler.unfinished() /* TC: O(1) */ {
-        // Choose the next task to execute
-        // TC: O(n)
-        let next_task = scheduler.get_next_task();
-        // Record that the task has been executed
-        // TC: O(1) - https://doc.rust-lang.org/std/collections/index.html#sequences
-        executed_ids.push(next_task.id);
-        // Queue any tasks submitted during execution
-        // TC: O(n)
-        scheduler.update_queue();
+        executed_ids
     }
-
-    executed_ids
 }
 
-// Should operate on anything that can be transformed into an iterator over tasks
-pub fn execution_order(tasks: Vec<Task>) -> Vec<u64> {
-    // TODO: do something more clever
-    naive_order(tasks)
+struct CleverScheduler<'a> {
+    pub tasks: &'a Vec<Task>
+}
+
+impl<'a> Scheduler<'a> for CleverScheduler<'a> {
+    fn new(tasks: &'a Vec<Task>) -> Self {
+        Self { tasks }
+    }
+
+    fn execution_order(&mut self) -> Vec<u64> {
+        todo!()
+    }
 }
 
 #[cfg(test)]
@@ -154,7 +162,11 @@ mod tests {
             Task { id: 44, queued_at: 0, execution_duration: 2 },
         ];
 
-        assert_eq!(execution_order(tasks), vec![44, 43, 42]);
+        let mut naive_scheduler = NaiveScheduler::new(&tasks);
+        let mut clever_scheduler = CleverScheduler::new(&tasks);
+
+        assert_eq!(naive_scheduler.execution_order(), vec![44, 43, 42]);
+        assert_eq!(clever_scheduler.execution_order(), vec![44, 43, 42]);
     }
 
     // TODO: if two tasks are available with same duration, take the one queued first
@@ -177,6 +189,10 @@ mod tests {
             Task { id: 44, queued_at: 2, execution_duration: 2 },
         ];
 
-        assert_eq!(execution_order(tasks), vec![42, 44, 43]);
+        let mut naive_scheduler = NaiveScheduler::new(&tasks);
+        let mut clever_scheduler = CleverScheduler::new(&tasks);
+
+        assert_eq!(naive_scheduler.execution_order(), vec![42, 44, 43]);
+        assert_eq!(clever_scheduler.execution_order(), vec![42, 44, 43]);
     }
 }
