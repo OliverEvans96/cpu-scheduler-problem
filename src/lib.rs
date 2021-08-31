@@ -49,6 +49,7 @@ impl<'a> NaiveScheduler<'a> {
         if let Some(next_task_ind) = get_shortest_task_ind(&self.current_queue) {
             // If at least one new task has been queued while the previous one was executing,
             // get the shortest one.
+            // TC: O(n)
             next_task = self.current_queue.remove(next_task_ind);
             self.current_time += next_task.execution_duration;
         } else {
