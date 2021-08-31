@@ -5,6 +5,23 @@ pub struct Task {
     pub execution_duration: u32,
 }
 
+/// Time complexity: O(n)
+fn get_shortest_task_ind(tasks: &Vec<&Task>) -> Option<usize> {
+    if let Some(first_task) = tasks.first() {
+        let mut min_duration = first_task.execution_duration;
+        let mut min_ind: usize = 0;
+        // TC: O(n)
+        for (i, task) in tasks.iter().enumerate().skip(1) {
+            if task.execution_duration < min_duration {
+                min_duration = task.execution_duration;
+                min_ind = i;
+            }
+        }
+        return Some(min_ind)
+    }
+    None
+}
+
 struct Scheduler<'a> {
     pub current_time: u32,
     // Tasks that have been queued so far
@@ -86,30 +103,6 @@ impl<'a> Scheduler<'a> {
 
 }
 
-// Should operate on anything that can be transformed into an iterator over tasks
-pub fn execution_order(tasks: Vec<Task>) -> Vec<u64> {
-    // TODO: do something more clever
-    naive_order(tasks)
-}
-
-/// Time complexity: O(n)
-fn get_shortest_task_ind(tasks: &Vec<&Task>) -> Option<usize> {
-    if let Some(first_task) = tasks.first() {
-        let mut min_duration = first_task.execution_duration;
-        let mut min_ind: usize = 0;
-        // TC: O(n)
-        for (i, task) in tasks.iter().enumerate().skip(1) {
-            if task.execution_duration < min_duration {
-                min_duration = task.execution_duration;
-                min_ind = i;
-            }
-        }
-        return Some(min_ind)
-    }
-    None
-}
-
-
 pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
     // Do nothing if there are no tasks
     if tasks.len() == 0 {
@@ -136,6 +129,12 @@ pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
     }
 
     executed_ids
+}
+
+// Should operate on anything that can be transformed into an iterator over tasks
+pub fn execution_order(tasks: Vec<Task>) -> Vec<u64> {
+    // TODO: do something more clever
+    naive_order(tasks)
 }
 
 #[cfg(test)]
