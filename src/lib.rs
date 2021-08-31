@@ -23,8 +23,7 @@ fn get_shortest_task_ind(tasks: &Vec<&Task>) -> Option<usize> {
 }
 
 pub trait Scheduler<'a> {
-    // TODO: Make this signature more idiomatic
-    fn new(tasks: &'a Vec<Task>) -> Self;
+    fn new(tasks: &'a[Task]) -> Self;
     fn execution_order(&mut self) -> Vec<u64>;
 }
 
@@ -98,7 +97,7 @@ impl<'a> NaiveScheduler<'a> {
 
 impl<'a> Scheduler<'a> for NaiveScheduler<'a> {
     /// Time complexity: O(n*log(n))
-    fn new(tasks: &'a Vec<Task>) -> Self {
+    fn new(tasks: &'a[Task]) -> Self {
         // convert from Vec<Task> to Vec<&Task>
         // TC: O(n)
         let mut unqueued_tasks: Vec<&Task> = tasks.iter().collect();
@@ -138,11 +137,11 @@ impl<'a> Scheduler<'a> for NaiveScheduler<'a> {
 }
 
 struct CleverScheduler<'a> {
-    pub tasks: &'a Vec<Task>
+    pub tasks: &'a[Task]
 }
 
 impl<'a> Scheduler<'a> for CleverScheduler<'a> {
-    fn new(tasks: &'a Vec<Task>) -> Self {
+    fn new(tasks: &'a[Task]) -> Self {
         Self { tasks }
     }
 
