@@ -75,29 +75,30 @@ impl<'a> Scheduler<'a> {
         next_task
     }
 
-    // TODO: Improve implementation
-    /// Time complexity: O(n^2)
+    /// Time complexity: O(n)
     fn get_new_tasks(&mut self) -> Vec<&'a Task> {
         // See drain_filter: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.drain_filter
-        let mut i = 0;
         let mut new_tasks = Vec::<&Task>::new();
-        // TC: O(n^2) - I think?
-        while i < self.unqueued_tasks.len() {
-            if self.unqueued_tasks[i].queued_at <= self.current_time {
-                // TC: O(n)
-                let new_task = self.unqueued_tasks.remove(i);
+
+        // TC: O(n)
+        while self.unqueued_tasks.len() > 0 {
+            // Okay to unwrap because unqueued_tasks.len() > 0
+            // NOTE: This assumes unqueued_tasks is in reverse-chronological order
+            if self.unqueued_tasks.last().unwrap().queued_at <= self.current_time {
+                // Okay to unwrap because unqueued_tasks.len() > 0
+                // TC: O(1)
+                let new_task = self.unqueued_tasks.pop().unwrap();
                 // TC: O(1)
                 new_tasks.push(new_task);
-            } else {
-                i += 1;
             }
         }
+
         new_tasks
     }
 
-    /// Time complexity: O(n^2)
+    /// Time complexity: O(n)
     pub fn update_queue(&mut self) {
-        // TC: O(n^2)
+        // TC: O(n)
         let new_tasks = self.get_new_tasks();
         // TC: O(n)
         self.current_queue.extend(new_tasks);
@@ -117,7 +118,7 @@ pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
     let mut executed_ids = Vec::<u64>::new();
 
     // Loop over each task that gets executed
-    // TC: O(n^3)
+    // TC: O(n^2)
     while scheduler.unfinished()  /* TC: O(1) */ {
         // Choose the next task to execute
         // TC: O(n)
@@ -126,7 +127,7 @@ pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
         // TC: O(1) - https://doc.rust-lang.org/std/collections/index.html#sequences
         executed_ids.push(next_task.id);
         // Queue any tasks submitted during execution
-        // TC: O(n^2)
+        // TC: O(n)
         scheduler.update_queue();
     }
 
