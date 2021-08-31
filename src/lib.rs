@@ -23,6 +23,7 @@ fn get_shortest_task_ind(tasks: &Vec<&Task>) -> Option<usize> {
 }
 
 pub trait Scheduler<'a> {
+    // TODO: Make this signature more idiomatic
     fn new(tasks: &'a Vec<Task>) -> Self;
     fn execution_order(&mut self) -> Vec<u64>;
 }
@@ -168,6 +169,22 @@ mod tests {
         assert_eq!(naive_scheduler.execution_order(), vec![44, 43, 42]);
         assert_eq!(clever_scheduler.execution_order(), vec![44, 43, 42]);
     }
+
+    #[test]
+    fn accepts_slice_arg() {
+        let tasks = vec![
+            Task { id: 42, queued_at: 5, execution_duration: 3 },
+            Task { id: 43, queued_at: 2, execution_duration: 3 },
+            Task { id: 44, queued_at: 0, execution_duration: 2 },
+        ];
+
+        let mut naive_scheduler = NaiveScheduler::new(tasks.as_slice());
+        // let mut clever_scheduler = CleverScheduler::new(&tasks);
+
+        assert_eq!(naive_scheduler.execution_order(), vec![44, 43, 42]);
+        // assert_eq!(clever_scheduler.execution_order(), vec![44, 43, 42]);
+    }
+
 
     // TODO: if two tasks are available with same duration, take the one queued first
 
