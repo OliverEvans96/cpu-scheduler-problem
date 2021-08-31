@@ -62,16 +62,18 @@ fn update_queue<'a>(current_queue: &mut Vec<&'a Task>, unqueued_tasks: &mut Vec<
     current_queue.extend(new_tasks);
 }
 
-fn get_next_task_from_queue<'a>(current_queue: &mut Vec<&'a Task>, unqueued_tasks: &mut Vec<&'a Task>) -> &'a Task {
+fn get_next_task_from_queue<'a>(current_queue: &mut Vec<&'a Task>, unqueued_tasks: &mut Vec<&'a Task>, current_time: &mut u32) -> &'a Task {
     let next_task;
     if let Some(next_task_ind) = get_shortest_task_ind(&current_queue) {
-        // If at least one new task has been queued while the previous one was executing
-        // Get next task
+        // If at least one new task has been queued while the previous one was executing,
+        // get the shortest one.
         next_task = current_queue.remove(next_task_ind);
+        *current_time += next_task.execution_duration;
     } else {
-        // Otherwise, get the next task that will be queued later
+        // Otherwise, fast-forward to the next task that will be queued.
         // Safe to unwrap here because we know that unqueued_tasks.len() > 0
         next_task = get_first_queued_task(unqueued_tasks).unwrap();
+        *current_time = next_task.queued_at + next_task.execution_duration;
     }
 
     next_task
@@ -92,31 +94,16 @@ pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
     }
 
     // Initialize loop variables
-    // Okay to unwrap because tasks.len() > 0, therefore unqueued_tasks.len() > 0.
-    let mut current_task = get_first_queued_task(&mut unqueued_tasks).unwrap();
-    println!("First task: {}", current_task.id);
-    let mut current_time = current_task.queued_at;
+    let mut current_time: u32 = 0;
 
     // Loop over each task that gets executed
     while unqueued_tasks.len() > 0 || current_queue.len() > 0 {
-        // Generate new queue
-        current_time += current_task.execution_duration;
-        println!("Current time = {}", current_time);
-        println!("Remaining tasks (pre-update) = {:?}", unqueued_tasks);
-        println!("Current queue (pre-update) = {:?}", current_queue);
-
-        update_queue(&mut current_queue, &mut unqueued_tasks, current_time);
-
-        println!("Remaining tasks (post-update) = {:?}", unqueued_tasks);
-        println!("Current queue (post-update) = {:?}", current_queue);
-
-        let next_task = get_next_task_from_queue(&mut current_queue, &mut unqueued_tasks);
-
+        // Choose the next task to execute
+        let next_task = get_next_task_from_queue(&mut current_queue, &mut unqueued_tasks, &mut &mut current_time);
         // Record that the task has been executed
         executed_ids.push(next_task.id);
-
-        // Prepare for next step
-        current_task = next_task;
+        // Queue any tasks submitted during execution
+        update_queue(&mut current_queue, &mut unqueued_tasks, current_time);
     }
 
     executed_ids
