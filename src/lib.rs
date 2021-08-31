@@ -90,6 +90,8 @@ impl<'a> Scheduler<'a> {
                 let new_task = self.unqueued_tasks.pop().unwrap();
                 // TC: O(1)
                 new_tasks.push(new_task);
+            } else {
+                break;
             }
         }
 
