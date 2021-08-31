@@ -119,7 +119,7 @@ pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
 
     // Loop over each task that gets executed
     // TC: O(n^2)
-    while scheduler.unfinished()  /* TC: O(1) */ {
+    while scheduler.unfinished() /* TC: O(1) */ {
         // Choose the next task to execute
         // TC: O(n)
         let next_task = scheduler.get_next_task();
