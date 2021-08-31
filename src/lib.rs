@@ -37,13 +37,13 @@ pub struct NaiveScheduler<'a> {
 
 impl<'a> NaiveScheduler<'a> {
     /// Time complexity: O(1)
-    pub fn unfinished(&self) -> bool {
+    fn unfinished(&self) -> bool {
         // TC: O(1) - https://stackoverflow.com/questions/49775759/what-is-the-runtime-complexity-of-veclen
         self.unqueued_tasks.len() > 0 || self.current_queue.len() > 0
     }
 
     /// Time complexity: O(n)
-    pub fn get_next_task(&mut self) -> &'a Task {
+    fn get_next_task(&mut self) -> Option<&'a Task> {
         let next_task;
         // TC: O(n)
         if let Some(next_task_ind) = get_shortest_task_ind(&self.current_queue) {
@@ -52,16 +52,19 @@ impl<'a> NaiveScheduler<'a> {
             // TC: O(n)
             next_task = self.current_queue.remove(next_task_ind);
             self.current_time += next_task.execution_duration;
+            Some(next_task)
         } else {
             // Otherwise, fast-forward to the next task that will be queued.
-            // Safe to unwrap here because we know that unqueued_tasks.len() > 0
             // NOTE: This assumes unqueued_tasks are in reverse-chronological order
             // TC: O(1) - https://doc.rust-lang.org/src/alloc/vec/mod.rs.html#1689
-            next_task = self.unqueued_tasks.pop().unwrap();
-            self.current_time = next_task.queued_at + next_task.execution_duration;
+            if let Some(next_task) = self.unqueued_tasks.pop() {
+                self.current_time = next_task.queued_at + next_task.execution_duration;
+                Some(next_task)
+            } else {
+                // There might be no unqueued tasks to pop
+                None
+            }
         }
-
-        next_task
     }
 
     /// Time complexity: O(n)
@@ -71,7 +74,6 @@ impl<'a> NaiveScheduler<'a> {
 
         // TC: O(n)
         while self.unqueued_tasks.len() > 0 {
-            // Okay to unwrap because unqueued_tasks.len() > 0
             // NOTE: This assumes unqueued_tasks is in reverse-chronological order
             if self.unqueued_tasks.last().unwrap().queued_at <= self.current_time {
                 // Okay to unwrap because unqueued_tasks.len() > 0
@@ -88,7 +90,7 @@ impl<'a> NaiveScheduler<'a> {
     }
 
     /// Time complexity: O(n)
-    pub fn update_queue(&mut self) {
+    fn update_queue(&mut self) {
         // TC: O(n)
         let new_tasks = self.get_new_tasks();
         // TC: O(n)
@@ -123,8 +125,9 @@ impl<'a> Scheduler<'a> for NaiveScheduler<'a> {
         // TC: O(n^2)
         while self.unfinished() /* TC: O(1) */ {
             // Choose the next task to execute
+            // Okay to unwrap because unqueued_tasks.len() > 0
             // TC: O(n)
-            let next_task = self.get_next_task();
+            let next_task = self.get_next_task().unwrap();
             // Record that the task has been executed
             // TC: O(1) - https://doc.rust-lang.org/std/collections/index.html#sequences
             executed_ids.push(next_task.id);
