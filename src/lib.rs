@@ -5,6 +5,73 @@ pub struct Task {
     pub execution_duration: u32,
 }
 
+struct CpuContext<'a> {
+    pub current_time: u32,
+    // Tasks that have been queued so far
+    pub current_queue: Vec<&'a Task>,
+    // Tasks that have not yet been queued
+    pub unqueued_tasks: Vec<&'a Task>,
+}
+
+impl<'a> CpuContext<'a> {
+    pub fn new(tasks: &'a Vec<Task>) -> Self {
+        // convert from Vec<Task> to Vec<&Task>
+        let mut unqueued_tasks: Vec<&Task> = tasks.iter().collect();
+        // Sort unqueued tasks in reverse-chronological queue time for easy popping
+        // Safe to unwrap because two u64s always have a partial ordering.
+        unqueued_tasks.sort_unstable_by(|&a, &b| b.queued_at.partial_cmp(&a.queued_at).unwrap());
+
+        Self {
+            current_time: 0,
+            current_queue: vec![],
+            unqueued_tasks,
+        }
+    }
+
+    pub fn unfinished(&self) -> bool {
+        self.unqueued_tasks.len() > 0 || self.current_queue.len() > 0
+    }
+
+    // fn get_next_task_from_queue<'a>(current_queue: &mut Vec<&'a Task>, unqueued_tasks: &mut Vec<&'a Task>, current_time: &mut u32) -> &'a Task {
+    pub fn get_next_task(&mut self) -> &'a Task {
+        let next_task;
+        if let Some(next_task_ind) = get_shortest_task_ind(&self.current_queue) {
+            // If at least one new task has been queued while the previous one was executing,
+            // get the shortest one.
+            next_task = self.current_queue.remove(next_task_ind);
+            self.current_time += next_task.execution_duration;
+        } else {
+            // Otherwise, fast-forward to the next task that will be queued.
+            // Safe to unwrap here because we know that unqueued_tasks.len() > 0
+            // NOTE: This assumes unqueued_tasks are in reverse-chronological order
+            next_task = self.unqueued_tasks.pop().unwrap();
+            self.current_time = next_task.queued_at + next_task.execution_duration;
+        }
+
+        next_task
+    }
+
+    fn get_new_tasks(&mut self) -> Vec<&'a Task> {
+        // See drain_filter: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.drain_filter
+        let mut i = 0;
+        let mut new_tasks = Vec::<&Task>::new();
+        while i < self.unqueued_tasks.len() {
+            if self.unqueued_tasks[i].queued_at <= self.current_time {
+                new_tasks.push(self.unqueued_tasks.remove(i));
+            } else {
+                i += 1;
+            }
+        }
+        new_tasks
+    }
+
+    pub fn update_queue(&mut self) {
+        let new_tasks = self.get_new_tasks();
+        self.current_queue.extend(new_tasks);
+    }
+
+}
+
 // Should operate on anything that can be transformed into an iterator over tasks
 pub fn execution_order(tasks: Vec<Task>) -> Vec<u64> {
     // TODO: do something more clever
@@ -26,42 +93,6 @@ fn get_shortest_task_ind(tasks: &Vec<&Task>) -> Option<usize> {
     None
 }
 
-fn get_new_tasks<'a>(unqueued_tasks: &mut Vec<&'a Task>, current_time: u32) -> Vec<&'a Task> {
-    // See drain_filter: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.drain_filter
-    let mut i = 0;
-    let mut new_tasks = Vec::<&Task>::new();
-    while i < unqueued_tasks.len() {
-        if unqueued_tasks[i].queued_at <= current_time {
-            new_tasks.push(unqueued_tasks.remove(i));
-        } else {
-            i += 1;
-        }
-    }
-    new_tasks
-}
-
-fn update_queue<'a>(current_queue: &mut Vec<&'a Task>, unqueued_tasks: &mut Vec<&'a Task>, current_time: u32) {
-    let new_tasks = get_new_tasks(unqueued_tasks, current_time);
-    current_queue.extend(new_tasks);
-}
-
-fn get_next_task_from_queue<'a>(current_queue: &mut Vec<&'a Task>, unqueued_tasks: &mut Vec<&'a Task>, current_time: &mut u32) -> &'a Task {
-    let next_task;
-    if let Some(next_task_ind) = get_shortest_task_ind(&current_queue) {
-        // If at least one new task has been queued while the previous one was executing,
-        // get the shortest one.
-        next_task = current_queue.remove(next_task_ind);
-        *current_time += next_task.execution_duration;
-    } else {
-        // Otherwise, fast-forward to the next task that will be queued.
-        // Safe to unwrap here because we know that unqueued_tasks.len() > 0
-        // NOTE: This assumes unqueued_tasks are in reverse-chronological order
-        next_task = unqueued_tasks.pop().unwrap();
-        *current_time = next_task.queued_at + next_task.execution_duration;
-    }
-
-    next_task
-}
 
 pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
     // Do nothing if there are no tasks
@@ -69,29 +100,19 @@ pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
         return vec![];
     }
 
-    // Tasks that have not yet been executed
-    // convert from Vec<Task> to Vec<&Task>
-    let mut unqueued_tasks: Vec<&Task> = tasks.iter().collect();
-    // Sort unqueued tasks in reverse-chronological queue time for easy popping
-    // Safe to unwrap because two u64s always have a partial ordering.
-    unqueued_tasks.sort_unstable_by(|&a, &b| b.queued_at.partial_cmp(&a.queued_at).unwrap());
+    let mut cpu = CpuContext::new(&tasks);
 
     // Ids of tasks that have been executed so far
     let mut executed_ids = Vec::<u64>::new();
-    // Tasks that have been queued so far
-    let mut current_queue = Vec::<&Task>::new();
-
-    // Initialize loop variables
-    let mut current_time: u32 = 0;
 
     // Loop over each task that gets executed
-    while unqueued_tasks.len() > 0 || current_queue.len() > 0 {
+    while cpu.unfinished() {
         // Choose the next task to execute
-        let next_task = get_next_task_from_queue(&mut current_queue, &mut unqueued_tasks, &mut &mut current_time);
+        let next_task = cpu.get_next_task();
         // Record that the task has been executed
         executed_ids.push(next_task.id);
         // Queue any tasks submitted during execution
-        update_queue(&mut current_queue, &mut unqueued_tasks, current_time);
+        cpu.update_queue();
     }
 
     executed_ids
