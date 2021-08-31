@@ -85,7 +85,7 @@ impl<'a> Scheduler<'a> {
         while i < self.unqueued_tasks.len() {
             if self.unqueued_tasks[i].queued_at <= self.current_time {
                 // TC: O(n)
-                new_tasks.push(self.unqueued_tasks.remove(i));
+                new_tasks.push(self.unqueued_tasks.remove(i) /* TC: O(n) */) /* TC: O(1) */;
             } else {
                 i += 1;
             }
