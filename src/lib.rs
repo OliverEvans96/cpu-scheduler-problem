@@ -5,7 +5,7 @@ pub struct Task {
     pub execution_duration: u32,
 }
 
-struct CpuContext<'a> {
+struct Scheduler<'a> {
     pub current_time: u32,
     // Tasks that have been queued so far
     pub current_queue: Vec<&'a Task>,
@@ -13,7 +13,7 @@ struct CpuContext<'a> {
     pub unqueued_tasks: Vec<&'a Task>,
 }
 
-impl<'a> CpuContext<'a> {
+impl<'a> Scheduler<'a> {
     pub fn new(tasks: &'a Vec<Task>) -> Self {
         // convert from Vec<Task> to Vec<&Task>
         let mut unqueued_tasks: Vec<&Task> = tasks.iter().collect();
@@ -100,19 +100,19 @@ pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
         return vec![];
     }
 
-    let mut cpu = CpuContext::new(&tasks);
+    let mut scheduler = Scheduler::new(&tasks);
 
     // Ids of tasks that have been executed so far
     let mut executed_ids = Vec::<u64>::new();
 
     // Loop over each task that gets executed
-    while cpu.unfinished() {
+    while scheduler.unfinished() {
         // Choose the next task to execute
-        let next_task = cpu.get_next_task();
+        let next_task = scheduler.get_next_task();
         // Record that the task has been executed
         executed_ids.push(next_task.id);
         // Queue any tasks submitted during execution
-        cpu.update_queue();
+        scheduler.update_queue();
     }
 
     executed_ids
