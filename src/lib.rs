@@ -171,16 +171,105 @@ impl<'a> Scheduler<'a> for NaiveScheduler<'a> {
 }
 
 struct CleverScheduler<'a> {
-    pub tasks: &'a[Task]
+    pub current_time: u32,
+    pub unqueued_tasks: Vec<&'a Task>,
+    pub current_queue: BinaryHeap<TaskDurationDesc<'a>>
+}
+
+impl<'a> CleverScheduler<'a> {
+    /// Time complexity: O(1)
+    fn unfinished(&self) -> bool {
+        // TC: O(1) - https://stackoverflow.com/questions/49775759/what-is-the-runtime-complexity-of-veclen
+        self.unqueued_tasks.len() > 0 || self.current_queue.len() > 0
+    }
+
+    // Time complexity: O(n*log(n))
+    fn queue_tasks_submitted_before(&mut self, time: u32) {
+        // Index of first task to be popped = # of tasks not to pop
+        // TC: O(log(n))
+        let num_later_tasks = self.unqueued_tasks.partition_point(|&task| task.queued_at >= time);
+        // Number of tasks to pop
+        let num_new_tasks = self.unqueued_tasks.len() - num_later_tasks;
+        // TC: O(n*log(n)) - I think?
+        for _ in 0..num_new_tasks {
+            // Okay to unwrap because we know we have enough tasks to pop
+            // TC: O(1)
+            let task = self.unqueued_tasks.pop().unwrap();
+            // TC: O(log(n))
+            self.current_queue.push(TaskDurationDesc(task));
+        }
+    }
+
+    // Time complexity: O(log(n))
+    fn get_next_task(&mut self) -> Option<&'a Task> {
+        // TC: O(log(n))
+        if let Some(TaskDurationDesc(task)) = self.current_queue.pop() {
+            // Grab from the queue if possible
+            self.current_time += task.execution_duration;
+            Some(task)
+        } else {
+            // Otherwise, fast-forward to the next queued task
+            // TC: O(1)
+            if let Some(task) = self.unqueued_tasks.pop() {
+                // There was another task to be queued
+                self.current_time = task.queued_at + task.execution_duration;
+                Some(task)
+            } else {
+                // Looks like we're done (no more tasks, queued or unqueued)
+                None
+            }
+        }
+    }
+
+    // Time complexity: O(n*log(n))
+    fn update_queue(&mut self) {
+        // TC: O(n*log(n))
+        self.queue_tasks_submitted_before(self.current_time);
+    }
 }
 
 impl<'a> Scheduler<'a> for CleverScheduler<'a> {
+    /// Time complexity: O(n*log(n))
     fn new(tasks: &'a[Task]) -> Self {
-        Self { tasks }
+        // convert from Vec<Task> to Vec<&Task>
+        // TC: O(n)
+        let mut unqueued_tasks: Vec<&Task> = tasks.iter().collect();
+        // Sort unqueued tasks in reverse-chronological queue time for easy popping
+        // Safe to unwrap because two u64s always have a partial ordering.
+        // TC: O(n*log(n)) - https://doc.rust-lang.org/std/primitive.slice.html#method.sort_unstable_by
+        unqueued_tasks.sort_unstable_by(|&a, &b| b.queued_at.partial_cmp(&a.queued_at).unwrap());
+
+        let current_queue = BinaryHeap::new();
+
+        Self {
+            current_time: 0,
+            unqueued_tasks,
+            current_queue,
+        }
     }
 
+    // Time Complexity: TODO
     fn execution_order(&mut self) -> Vec<u64> {
-        todo!()
+        // Ids of tasks that have been executed so far
+        let mut executed_ids = Vec::<u64>::new();
+
+        // Loop over each task that gets executed
+        // TC: O(n*log(n)) (TODO - hopefully)
+        while self.unfinished() /* TC: O(1) */ {
+            // Choose the next task to execute
+            // Okay to unwrap because the queue is not empty
+            // TC: O(log(n))
+            let next_task = self.get_next_task().unwrap();
+
+            // Record that the task has been executed
+            // TC: O(1) - https://doc.rust-lang.org/std/collections/index.html#sequences
+            executed_ids.push(next_task.id);
+            // Queue any tasks submitted during execution
+            // TC: O(n*log(n))
+            self.update_queue();
+        }
+
+        executed_ids
     }
 }
 
@@ -212,10 +301,10 @@ mod tests {
         ];
 
         let mut naive_scheduler = NaiveScheduler::new(tasks.as_slice());
-        // let mut clever_scheduler = CleverScheduler::new(&tasks);
+        let mut clever_scheduler = CleverScheduler::new(&tasks);
 
         assert_eq!(naive_scheduler.execution_order(), vec![44, 43, 42]);
-        // assert_eq!(clever_scheduler.execution_order(), vec![44, 43, 42]);
+        assert_eq!(clever_scheduler.execution_order(), vec![44, 43, 42]);
     }
 
 
