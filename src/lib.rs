@@ -11,23 +11,6 @@ pub fn execution_order(tasks: Vec<Task>) -> Vec<u64> {
     naive_order(tasks)
 }
 
-// TODO: Combine these functions w/ a *_by_key abstraction
-fn get_first_queued_task<'a>(tasks: &mut Vec<&'a Task>) -> Option<&'a Task> {
-    if let Some(first_task) = tasks.first() {
-        let mut min_time = first_task.queued_at;
-        let mut min_ind: usize = 0;
-        for (i, task) in tasks.iter().enumerate().skip(1) {
-            if task.queued_at < min_time {
-                min_time = task.queued_at;
-                min_ind = i;
-            }
-        }
-        let first_queued_task = tasks.remove(min_ind);
-        return Some(&first_queued_task)
-    }
-    None
-}
-
 fn get_shortest_task_ind(tasks: &Vec<&Task>) -> Option<usize> {
     if let Some(first_task) = tasks.first() {
         let mut min_duration = first_task.execution_duration;
@@ -72,7 +55,8 @@ fn get_next_task_from_queue<'a>(current_queue: &mut Vec<&'a Task>, unqueued_task
     } else {
         // Otherwise, fast-forward to the next task that will be queued.
         // Safe to unwrap here because we know that unqueued_tasks.len() > 0
-        next_task = get_first_queued_task(unqueued_tasks).unwrap();
+        // NOTE: This assumes unqueued_tasks are in reverse-chronological order
+        next_task = unqueued_tasks.pop().unwrap();
         *current_time = next_task.queued_at + next_task.execution_duration;
     }
 
@@ -83,6 +67,9 @@ pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
     // Tasks that have not yet been executed
     // convert from Vec<Task> to Vec<&Task>
     let mut unqueued_tasks: Vec<&Task> = tasks.iter().collect();
+    // Sort unqueued tasks in reverse-chronological queue time for easy popping
+    // Safe to unwrap because two u64s always have a partial ordering.
+    unqueued_tasks.sort_unstable_by(|&a, &b| b.queued_at.partial_cmp(&a.queued_at).unwrap());
 
     // Ids of tasks that have been executed so far
     let mut executed_ids = Vec::<u64>::new();
