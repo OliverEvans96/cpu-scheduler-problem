@@ -64,6 +64,11 @@ fn get_next_task_from_queue<'a>(current_queue: &mut Vec<&'a Task>, unqueued_task
 }
 
 pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
+    // Do nothing if there are no tasks
+    if tasks.len() == 0 {
+        return vec![];
+    }
+
     // Tasks that have not yet been executed
     // convert from Vec<Task> to Vec<&Task>
     let mut unqueued_tasks: Vec<&Task> = tasks.iter().collect();
@@ -75,10 +80,6 @@ pub fn naive_order(tasks: Vec<Task>) -> Vec<u64> {
     let mut executed_ids = Vec::<u64>::new();
     // Tasks that have been queued so far
     let mut current_queue = Vec::<&Task>::new();
-
-    if tasks.len() == 0 {
-        return vec![];
-    }
 
     // Initialize loop variables
     let mut current_time: u32 = 0;
