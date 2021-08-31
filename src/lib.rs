@@ -1,8 +1,38 @@
+use std::{cmp::Ordering, collections::{BinaryHeap}};
+
 #[derive(Debug, Clone)]
 pub struct Task {
     pub id: u64,
     pub queued_at: u32,
     pub execution_duration: u32,
+}
+
+/// Used to order tasks by descending execution_duration
+/// Inspired by std::cmp::Reverse - https://doc.rust-lang.org/src/core/cmp.rs.html#584
+#[derive(Debug)]
+struct TaskDurationDesc<'a>(pub &'a Task);
+
+impl<'a> PartialEq for TaskDurationDesc<'a> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        self.0.execution_duration == other.0.execution_duration
+    }
+}
+
+impl<'a> Eq for TaskDurationDesc<'a> {}
+
+impl<'a> PartialOrd for TaskDurationDesc<'a> {
+    #[inline]
+    fn partial_cmp(&self, other: &TaskDurationDesc) -> Option<Ordering> {
+        other.0.execution_duration.partial_cmp(&self.0.execution_duration)
+    }
+}
+
+impl<'a> Ord for TaskDurationDesc<'a> {
+    #[inline]
+    fn cmp(&self, other: &TaskDurationDesc<'a>) -> Ordering {
+        other.0.execution_duration.cmp(&self.0.execution_duration)
+    }
 }
 
 /// Time complexity: O(n)
